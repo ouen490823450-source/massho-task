@@ -13,8 +13,8 @@
 <title>抹消課題アプリ｜注意障害リハビリ机上課題</title>
 <style>
   :root{
-    --bg:#eaeef4; --panel:#ffffff; --ink:#1f2933; --muted:#69748a;
-    --line:#d8dfea; --line2:#c5cedd;
+    --bg:#eaeef4; --panel:#ffffff; --ink:#16202b; --muted:#4f5a6b;
+    --line:#cdd6e4; --line2:#aeb9cc;
     --primary:#2b6cb0; --primary-d:#1f4f86; --primary-bg:#e6f0fb;
     --good:#2f9e44; --good-bg:#d8f5dd;
     --bad:#e03131; --bad-bg:#ffe3e3;
@@ -24,7 +24,7 @@
     --radius:16px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent; touch-action:manipulation;}
-  html{ -webkit-text-size-adjust:100%; height:100%; }
+  html{ -webkit-text-size-adjust:100%; height:100%; font-size:18px; } /* 高齢者配慮：基準を大きく */
   html,body{margin:0;padding:0;}
   body{
     font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic","Meiryo",system-ui,sans-serif;
@@ -57,30 +57,30 @@
 
   .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
         box-shadow:var(--shadow); padding:20px; margin-bottom:18px;}
-  .card h2{font-size:1.05rem; margin:0 0 14px; display:flex; align-items:center; gap:8px;}
+  .card h2{font-size:1.2rem; margin:0 0 14px; display:flex; align-items:center; gap:8px;}
   .card h2 .num{background:var(--primary); color:#fff; width:24px; height:24px; border-radius:50%;
         display:grid; place-items:center; font-size:.85rem; flex:none;}
 
   /* ---------- mode cards ---------- */
   .modes{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
   .mode{
-    border:2px solid var(--line2); border-radius:14px; padding:16px 14px; cursor:pointer;
+    border:2px solid var(--line2); border-radius:14px; padding:20px 14px; cursor:pointer;
     background:#fff; text-align:center; transition:.15s; user-select:none;
   }
   .mode:hover{border-color:var(--primary); transform:translateY(-2px);}
-  .mode.sel{border-color:var(--primary); background:var(--primary-bg); box-shadow:0 0 0 3px rgba(43,108,176,.15);}
-  .mode .ico{font-size:1.9rem; line-height:1;}
-  .mode .nm{font-weight:700; margin-top:8px; font-size:1.02rem;}
-  .mode .de{color:var(--muted); font-size:.78rem; margin-top:4px;}
+  .mode.sel{border-color:var(--primary); background:var(--primary-bg); box-shadow:0 0 0 3px rgba(43,108,176,.18);}
+  .mode .ico{font-size:2.1rem; line-height:1;}
+  .mode .nm{font-weight:800; margin-top:10px; font-size:1.15rem;}
+  .mode .de{color:var(--muted); font-size:.86rem; margin-top:5px;}
 
   /* ---------- settings rows ---------- */
   .row{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:14px 0;}
   .row:first-child{margin-top:0;}
-  .row .lbl{flex:0 0 130px; font-weight:600; font-size:.95rem; color:#3a4354;}
-  .seg{display:inline-flex; background:#eef2f8; border-radius:11px; padding:4px; gap:4px; flex-wrap:wrap;}
+  .row .lbl{flex:0 0 140px; font-weight:700; font-size:1.05rem; color:#2c3644;}
+  .seg{display:inline-flex; background:#e7edf6; border-radius:12px; padding:5px; gap:5px; flex-wrap:wrap;}
   .seg button{
-    border:none; background:transparent; padding:9px 15px; border-radius:8px; cursor:pointer;
-    font-size:.92rem; font-weight:600; color:#56607a; font-family:inherit; transition:.12s; min-width:54px;
+    border:none; background:transparent; padding:13px 20px; border-radius:9px; cursor:pointer;
+    font-size:1.02rem; font-weight:700; color:#3f4a63; font-family:inherit; transition:.12s; min-width:62px;
   }
   .seg button.on{background:#fff; color:var(--primary-d); box-shadow:0 2px 6px rgba(31,41,51,.12);}
   .seg button:hover:not(.on){color:var(--primary);}
@@ -91,8 +91,8 @@
   .chips{display:flex; flex-wrap:wrap; gap:7px; max-height:150px; overflow:auto; flex-basis:100%;
          padding:10px; background:#f6f8fc; border-radius:12px; border:1px solid var(--line);}
   .chip{
-    min-width:42px; height:42px; padding:0 8px; border:2px solid var(--line2); border-radius:10px;
-    background:#fff; font-size:1.15rem; font-weight:700; cursor:pointer; transition:.12s; color:#3a4354;
+    min-width:52px; height:52px; padding:0 10px; border:2px solid var(--line2); border-radius:11px;
+    background:#fff; font-size:1.4rem; font-weight:700; cursor:pointer; transition:.12s; color:#2c3644;
   }
   .chip.sel{background:var(--primary); color:#fff; border-color:var(--primary);}
   .chip:hover:not(.sel){border-color:var(--primary);}
@@ -121,15 +121,15 @@
     background:#fff; border:2px solid var(--primary); border-radius:14px; padding:10px 18px;
     display:flex; align-items:center; gap:14px; box-shadow:var(--shadow); flex:1 1 auto; min-width:260px;
   }
-  .target-box .cap{font-size:.82rem; color:var(--muted); font-weight:600;}
-  .target-box .vals{font-size:2.1rem; font-weight:800; color:var(--primary-d); letter-spacing:.12em; line-height:1;}
-  .target-box .instr{font-size:.92rem; font-weight:600; color:#3a4354;}
+  .target-box .cap{font-size:.92rem; color:var(--muted); font-weight:700;}
+  .target-box .vals{font-size:2.8rem; font-weight:800; color:var(--primary-d); letter-spacing:.12em; line-height:1;}
+  .target-box .instr{font-size:1.1rem; font-weight:700; color:#2c3644;}
   .stat-chip{
-    background:#fff; border:1px solid var(--line); border-radius:12px; padding:9px 14px; text-align:center;
-    box-shadow:var(--shadow); min-width:92px;
+    background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 16px; text-align:center;
+    box-shadow:var(--shadow); min-width:100px;
   }
-  .stat-chip .k{font-size:.72rem; color:var(--muted); font-weight:600;}
-  .stat-chip .v{font-size:1.4rem; font-weight:800; line-height:1.1;}
+  .stat-chip .k{font-size:.85rem; color:var(--muted); font-weight:700;}
+  .stat-chip .v{font-size:1.7rem; font-weight:800; line-height:1.1;}
   .stat-chip.time .v{color:var(--primary-d);}
   .stat-chip.prog .v{color:var(--good);}
   .btn-ghost{
@@ -442,8 +442,8 @@ const LEVELS = {
   hard:   {cols:12, rows:10, label:"むずかしい（12×10＝120マス）"},
 };
 const FONT = {std:"clamp(.8rem,2.4vw,1.3rem)", big:"clamp(1rem,3.2vw,1.9rem)", xl:"clamp(1.2rem,4vw,2.5rem)"};
-/* 盤面をiPad画面に収めるときの「文字サイズ＝セル何割」 */
-const FONT_RATIO = {std:0.40, big:0.50, xl:0.60};
+/* 盤面をiPad画面に収めるときの「文字サイズ＝セル何割」（高齢者配慮で大きめ） */
+const FONT_RATIO = {std:0.46, big:0.56, xl:0.66};
 
 /* 順番モードの盤面サイズ（盤面をぴったり埋める＝余りマスなし。かなは≤46、混在は偶数） */
 const SEQ_LAYOUT = {
@@ -655,7 +655,7 @@ function fitBoard(cols,rows){
   const cellW=(availW-(cols-1)*gap)/cols;
   const cellH=(availH-(rows-1)*gap)/rows;
   let cell=Math.floor(Math.min(cellW,cellH));
-  cell=Math.max(24, Math.min(cell,150));   // 小さすぎ／大きすぎを防止
+  cell=Math.max(38, Math.min(cell,172));   // 高齢者配慮：マスを小さくしすぎない／大画面では大きく
   board.style.gridTemplateColumns=`repeat(${cols}, ${cell}px)`;
   board.style.width=(cell*cols + gap*(cols-1))+"px";
   board.style.fontSize=Math.max(12, Math.floor(cell*FONT_RATIO[cfg.font]))+"px";
