@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- iPad / iOS：ホーム画面に追加で全画面の机上課題アプリとして動作 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="抹消課題">
+<meta name="theme-color" content="#2b6cb0">
+<meta name="format-detection" content="telephone=no">
+<title>抹消課題アプリ｜注意障害リハビリ机上課題</title>
+<style>
+  :root{
+    --bg:#eaeef4; --panel:#ffffff; --ink:#1f2933; --muted:#69748a;
+    --line:#d8dfea; --line2:#c5cedd;
+    --primary:#2b6cb0; --primary-d:#1f4f86; --primary-bg:#e6f0fb;
+    --good:#2f9e44; --good-bg:#d8f5dd;
+    --bad:#e03131; --bad-bg:#ffe3e3;
+    --accent:#e8820c; --accent-bg:#fff3e0;
+    --cell:#ffffff; --cell-line:#cdd6e3;
+    --shadow:0 6px 22px rgba(31,41,51,.10);
+    --radius:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent; touch-action:manipulation;}
+  html{ -webkit-text-size-adjust:100%; height:100%; }
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic","Meiryo",system-ui,sans-serif;
+    background:var(--bg); color:var(--ink);
+    min-height:100vh; min-height:100dvh; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    /* iPad：誤操作防止（文字選択・長押しメニュー・引っぱりバウンス） */
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+    overscroll-behavior:none;
+  }
+  /* セーフエリア（ノッチ／ホームインジケータ）を避ける */
+  .wrap{max-width:1120px; margin:0 auto;
+    padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right))
+            max(28px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));}
+  h1{font-size:1.5rem; margin:0; letter-spacing:.02em;}
+  .sub{color:var(--muted); font-size:.92rem; margin:4px 0 0;}
+
+  /* ---------- screens ---------- */
+  .screen{display:none;}
+  .screen.active{display:block; animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+
+  header.app{display:flex; align-items:center; gap:14px; margin-bottom:18px;}
+  header.app .logo{
+    width:50px; height:50px; border-radius:14px; flex:none;
+    background:linear-gradient(135deg,var(--primary),#3f8ad0);
+    display:grid; place-items:center; color:#fff; font-weight:800; font-size:1.5rem;
+    box-shadow:var(--shadow);
+  }
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+        box-shadow:var(--shadow); padding:20px; margin-bottom:18px;}
+  .card h2{font-size:1.05rem; margin:0 0 14px; display:flex; align-items:center; gap:8px;}
+  .card h2 .num{background:var(--primary); color:#fff; width:24px; height:24px; border-radius:50%;
+        display:grid; place-items:center; font-size:.85rem; flex:none;}
+
+  /* ---------- mode cards ---------- */
+  .modes{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+  .mode{
+    border:2px solid var(--line2); border-radius:14px; padding:16px 14px; cursor:pointer;
+    background:#fff; text-align:center; transition:.15s; user-select:none;
+  }
+  .mode:hover{border-color:var(--primary); transform:translateY(-2px);}
+  .mode.sel{border-color:var(--primary); background:var(--primary-bg); box-shadow:0 0 0 3px rgba(43,108,176,.15);}
+  .mode .ico{font-size:1.9rem; line-height:1;}
+  .mode .nm{font-weight:700; margin-top:8px; font-size:1.02rem;}
+  .mode .de{color:var(--muted); font-size:.78rem; margin-top:4px;}
+
+  /* ---------- settings rows ---------- */
+  .row{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:14px 0;}
+  .row:first-child{margin-top:0;}
+  .row .lbl{flex:0 0 130px; font-weight:600; font-size:.95rem; color:#3a4354;}
+  .seg{display:inline-flex; background:#eef2f8; border-radius:11px; padding:4px; gap:4px; flex-wrap:wrap;}
+  .seg button{
+    border:none; background:transparent; padding:9px 15px; border-radius:8px; cursor:pointer;
+    font-size:.92rem; font-weight:600; color:#56607a; font-family:inherit; transition:.12s; min-width:54px;
+  }
+  .seg button.on{background:#fff; color:var(--primary-d); box-shadow:0 2px 6px rgba(31,41,51,.12);}
+  .seg button:hover:not(.on){color:var(--primary);}
+
+  .hint{color:var(--muted); font-size:.84rem; margin:2px 0 0; flex-basis:100%;}
+
+  /* target chips */
+  .chips{display:flex; flex-wrap:wrap; gap:7px; max-height:150px; overflow:auto; flex-basis:100%;
+         padding:10px; background:#f6f8fc; border-radius:12px; border:1px solid var(--line);}
+  .chip{
+    min-width:42px; height:42px; padding:0 8px; border:2px solid var(--line2); border-radius:10px;
+    background:#fff; font-size:1.15rem; font-weight:700; cursor:pointer; transition:.12s; color:#3a4354;
+  }
+  .chip.sel{background:var(--primary); color:#fff; border-color:var(--primary);}
+  .chip:hover:not(.sel){border-color:var(--primary);}
+
+  .start-btn{
+    width:100%; padding:18px; border:none; border-radius:14px; cursor:pointer;
+    background:linear-gradient(135deg,var(--primary),#3f8ad0); color:#fff;
+    font-size:1.25rem; font-weight:800; font-family:inherit; letter-spacing:.04em;
+    box-shadow:0 8px 20px rgba(43,108,176,.35); transition:.15s;
+  }
+  .start-btn:hover{transform:translateY(-2px); box-shadow:0 12px 26px rgba(43,108,176,.45);}
+  .start-btn:active{transform:translateY(0);}
+
+  /* ---------- history ---------- */
+  .hist{font-size:.86rem;}
+  .hist table{width:100%; border-collapse:collapse;}
+  .hist th,.hist td{padding:8px 6px; text-align:center; border-bottom:1px solid var(--line);}
+  .hist th{color:var(--muted); font-weight:600; font-size:.78rem;}
+  .hist .empty{color:var(--muted); text-align:center; padding:16px;}
+  .linkbtn{background:none; border:none; color:var(--primary); cursor:pointer; font-size:.84rem;
+           font-family:inherit; text-decoration:underline; padding:0;}
+
+  /* ---------- task screen ---------- */
+  .task-top{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px;}
+  .target-box{
+    background:#fff; border:2px solid var(--primary); border-radius:14px; padding:10px 18px;
+    display:flex; align-items:center; gap:14px; box-shadow:var(--shadow); flex:1 1 auto; min-width:260px;
+  }
+  .target-box .cap{font-size:.82rem; color:var(--muted); font-weight:600;}
+  .target-box .vals{font-size:2.1rem; font-weight:800; color:var(--primary-d); letter-spacing:.12em; line-height:1;}
+  .target-box .instr{font-size:.92rem; font-weight:600; color:#3a4354;}
+  .stat-chip{
+    background:#fff; border:1px solid var(--line); border-radius:12px; padding:9px 14px; text-align:center;
+    box-shadow:var(--shadow); min-width:92px;
+  }
+  .stat-chip .k{font-size:.72rem; color:var(--muted); font-weight:600;}
+  .stat-chip .v{font-size:1.4rem; font-weight:800; line-height:1.1;}
+  .stat-chip.time .v{color:var(--primary-d);}
+  .stat-chip.prog .v{color:var(--good);}
+  .btn-ghost{
+    background:#fff; border:1px solid var(--line2); border-radius:12px; padding:11px 16px; cursor:pointer;
+    font-family:inherit; font-weight:700; font-size:.92rem; color:#56607a; transition:.12s;
+  }
+  .btn-ghost:hover{border-color:var(--primary); color:var(--primary);}
+  .btn-ghost.warn:hover{border-color:var(--bad); color:var(--bad);}
+
+  .progbar{height:8px; background:#dde4ef; border-radius:99px; overflow:hidden; margin-bottom:14px;}
+  .progbar i{display:block; height:100%; width:0; background:linear-gradient(90deg,var(--good),#69db7c); transition:width .25s;}
+
+  /* iPad：盤面はJSで画面に収める。基本はスクロールさせない（はみ出した時だけ可） */
+  .board-wrap{overflow:auto; -webkit-overflow-scrolling:touch; display:flex; justify-content:center; align-items:center;}
+  #screen-task.active{ display:flex; flex-direction:column; }
+  #screen-task .board-wrap{ flex:1 1 auto; min-height:0; }
+  .board{
+    display:grid; gap:7px; margin:0 auto; max-width:100%;
+  }
+  .cell{
+    aspect-ratio:1/1; background:var(--cell); border:1.5px solid var(--cell-line); border-radius:10px;
+    display:grid; place-items:center; cursor:pointer;
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
+    font-weight:700; line-height:1; transition:transform .06s, background .12s, box-shadow .12s;
+    font-variant-numeric:tabular-nums;
+  }
+  .cell:hover{border-color:var(--primary);}
+  .cell:active{transform:scale(.9);}
+  .cell.hit{
+    background:var(--good-bg); color:var(--good);
+    box-shadow:inset 0 0 0 3px var(--good); border-color:var(--good); cursor:default;
+  }
+  .cell.wrong{
+    background:var(--bad-bg); color:var(--bad); border-color:var(--bad);
+    box-shadow:inset 0 0 0 2px var(--bad); cursor:default; opacity:.85;
+  }
+  .cell.wrong::after{content:"✕"; position:absolute; font-size:.7em; opacity:.55;}
+  .cell{position:relative;}
+  @keyframes pop{0%{transform:scale(.7);}60%{transform:scale(1.12);}100%{transform:scale(1);}}
+  .cell.hit{animation:pop .22s ease;}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-3px);}75%{transform:translateX(3px);}}
+  .cell.shk{animation:shake .25s;}
+
+  /* ---------- results ---------- */
+  .res-grade{text-align:center; margin-bottom:18px;}
+  .res-grade .big{font-size:2.6rem; font-weight:800;}
+  .res-grade .msg{color:var(--muted); margin-top:4px;}
+  .metrics{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px;}
+  .metric{background:#f6f8fc; border:1px solid var(--line); border-radius:14px; padding:16px; text-align:center;}
+  .metric .k{font-size:.82rem; color:var(--muted); font-weight:600;}
+  .metric .v{font-size:1.9rem; font-weight:800; line-height:1.2; margin-top:4px;}
+  .metric .u{font-size:.8rem; color:var(--muted);}
+  .metric.good .v{color:var(--good);} .metric.bad .v{color:var(--bad);} .metric.acc .v{color:var(--primary-d);}
+
+  .analysis{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px;}
+  @media(max-width:640px){.analysis{grid-template-columns:1fr;}}
+  .lr{display:flex; align-items:stretch; gap:10px;}
+  .lr .half{flex:1; border-radius:12px; padding:14px; text-align:center; border:1px solid var(--line);}
+  .lr .half .k{font-size:.82rem; color:var(--muted); font-weight:600;}
+  .lr .half .v{font-size:1.7rem; font-weight:800;}
+  .lr .half.warn{background:var(--bad-bg); border-color:#ffc9c9;}
+  .lr .half.warn .v{color:var(--bad);}
+  .mini{display:grid; gap:2px; margin:0 auto;}
+  .mini i{aspect-ratio:1/1; border-radius:2px; background:#e3e9f2;}
+  .mini i.t-hit{background:var(--good);}
+  .mini i.t-miss{background:var(--bad);}
+  .legend{display:flex; gap:14px; justify-content:center; font-size:.78rem; color:var(--muted); margin-top:8px; flex-wrap:wrap;}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .legend b{width:12px; height:12px; border-radius:3px; display:inline-block;}
+
+  .res-actions{display:flex; gap:12px; margin-top:22px; flex-wrap:wrap;}
+  .res-actions button{flex:1; min-width:150px; padding:15px; border-radius:13px; font-size:1.05rem;
+        font-weight:700; font-family:inherit; cursor:pointer; border:none; transition:.15s;}
+  .btn-pri{background:linear-gradient(135deg,var(--primary),#3f8ad0); color:#fff; box-shadow:0 6px 16px rgba(43,108,176,.3);}
+  .btn-pri:hover{transform:translateY(-2px);}
+  .btn-sec{background:#fff; border:1px solid var(--line2)!important; color:#56607a;}
+  .btn-sec:hover{border-color:var(--primary)!important; color:var(--primary);}
+
+  .note{font-size:.84rem; color:var(--muted); background:var(--accent-bg); border:1px solid #ffe0b2;
+        border-radius:12px; padding:12px 14px; margin-top:6px;}
+  .foot{text-align:center; color:var(--muted); font-size:.78rem; margin-top:26px;}
+  @media(max-width:560px){
+    .modes{grid-template-columns:1fr;}
+    .row .lbl{flex-basis:100%;}
+    .target-box .vals{font-size:1.7rem;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ START SCREEN ============ -->
+  <section id="screen-start" class="screen active">
+    <header class="app">
+      <div class="logo">抹</div>
+      <div>
+        <h1>抹消課題アプリ</h1>
+        <p class="sub">高次脳機能障害・注意障害のための机上課題　／　数字・ひらがな・混在の3モード</p>
+      </div>
+    </header>
+
+    <!-- mode -->
+    <div class="card">
+      <h2><span class="num">1</span>モードをえらぶ</h2>
+      <div class="modes" id="modes">
+        <div class="mode sel" data-mode="number">
+          <div class="ico">１２３</div><div class="nm">数字抹消</div>
+          <div class="de">数字の中から探す</div>
+        </div>
+        <div class="mode" data-mode="kana">
+          <div class="ico">あいう</div><div class="nm">ひらがな抹消</div>
+          <div class="de">ひらがなの中から探す</div>
+        </div>
+        <div class="mode" data-mode="mixed">
+          <div class="ico">あ５な</div><div class="nm">混在抹消</div>
+          <div class="de">数字＋ひらがな混在</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- settings -->
+    <div class="card">
+      <h2><span class="num">2</span>やり方・むずかしさ</h2>
+
+      <div class="row">
+        <div class="lbl">やり方</div>
+        <div class="seg" id="seg-style">
+          <button data-v="cancel" class="on">さがす（抹消）</button>
+          <button data-v="sequence">じゅんばん（順番）</button>
+        </div>
+        <p class="hint" id="style-hint"></p>
+      </div>
+
+      <div class="row">
+        <div class="lbl">レベル</div>
+        <div class="seg" id="seg-level">
+          <button data-v="easy" class="on">やさしい</button>
+          <button data-v="normal">ふつう</button>
+          <button data-v="hard">むずかしい</button>
+        </div>
+        <p class="hint" id="level-hint"></p>
+      </div>
+
+      <div class="row" id="row-dir" style="display:none;">
+        <div class="lbl">順番の向き</div>
+        <div class="seg" id="seg-dir">
+          <button data-v="asc" class="on" id="dir-asc">小さい順</button>
+          <button data-v="desc" id="dir-desc">大きい順</button>
+        </div>
+        <p class="hint">数字や文字を、決まった向きで順番にタップします。</p>
+      </div>
+
+      <div class="row" id="row-mixedtask" style="display:none;">
+        <div class="lbl">課題タイプ</div>
+        <div class="seg" id="seg-mixedtask">
+          <button data-v="char" class="on">特定の文字</button>
+          <button data-v="allDigits">数字すべて</button>
+          <button data-v="allKana">ひらがなすべて</button>
+        </div>
+        <p class="hint">「数字すべて」＝ひらがなの中から数字だけを探す選択性注意の課題です。</p>
+      </div>
+
+      <div class="row" id="row-targetmode">
+        <div class="lbl">ターゲット</div>
+        <div class="seg" id="seg-targetmode">
+          <button data-v="auto" class="on">おまかせ</button>
+          <button data-v="manual">自分で選ぶ</button>
+        </div>
+      </div>
+
+      <div class="row" id="row-count">
+        <div class="lbl">ターゲット数</div>
+        <div class="seg" id="seg-count">
+          <button data-v="1" class="on">1つ</button>
+          <button data-v="2">2つ</button>
+          <button data-v="3">3つ</button>
+        </div>
+        <p class="hint">複数にすると探す対象が増えて難しくなります。</p>
+      </div>
+
+      <div class="row" id="row-chips" style="display:none;">
+        <div class="lbl">探す文字<br><small style="font-weight:400;color:var(--muted)">（最大3つ）</small></div>
+        <div class="chips" id="chips"></div>
+      </div>
+
+      <div class="row">
+        <div class="lbl">制限時間</div>
+        <div class="seg" id="seg-time">
+          <button data-v="0" class="on">なし</button>
+          <button data-v="60">1分</button>
+          <button data-v="120">2分</button>
+          <button data-v="180">3分</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="lbl">文字サイズ</div>
+        <div class="seg" id="seg-font">
+          <button data-v="std">標準</button>
+          <button data-v="big" class="on">大</button>
+          <button data-v="xl">特大</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="lbl">音フィードバック</div>
+        <div class="seg" id="seg-sound">
+          <button data-v="on" class="on">ON</button>
+          <button data-v="off">OFF</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="start-btn" id="btn-start">▶ はじめる</button>
+
+    <!-- history -->
+    <div class="card hist" style="margin-top:18px;">
+      <h2 style="justify-content:space-between;">
+        <span style="display:flex;align-items:center;gap:8px;"><span class="num">★</span>これまでの記録</span>
+        <button class="linkbtn" id="btn-clearhist">記録を消す</button>
+      </h2>
+      <div id="hist-body"></div>
+    </div>
+
+    <p class="foot">机上課題（抹消課題）アプリ ｜ 訓練・教育目的のツールです。診断には使用しないでください。</p>
+  </section>
+
+  <!-- ============ TASK SCREEN ============ -->
+  <section id="screen-task" class="screen">
+    <div class="task-top">
+      <div class="target-box">
+        <div>
+          <div class="cap" id="t-cap">これを探してタップ</div>
+          <div class="vals" id="t-target">3</div>
+        </div>
+        <div class="instr" id="t-instr"></div>
+      </div>
+      <div class="stat-chip prog"><div class="k">みつけた</div><div class="v" id="t-prog">0 / 0</div></div><!--prog-k handled in JS-->
+      <div class="stat-chip time"><div class="k">時間</div><div class="v" id="t-time">0:00</div></div>
+      <button class="btn-ghost warn" id="btn-end">終了する</button>
+    </div>
+    <div class="progbar"><i id="t-bar"></i></div>
+    <div class="board-wrap"><div class="board" id="board"></div></div>
+  </section>
+
+  <!-- ============ RESULT SCREEN ============ -->
+  <section id="screen-result" class="screen">
+    <header class="app">
+      <div class="logo">✓</div>
+      <div><h1>けっか</h1><p class="sub" id="r-setting"></p></div>
+    </header>
+
+    <div class="card">
+      <div class="res-grade">
+        <div class="big" id="r-grade">よくできました！</div>
+        <div class="msg" id="r-msg"></div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="k">所要時間</div><div class="v" id="r-time">0:00</div></div>
+        <div class="metric good"><div class="k" id="r-hit-k">正答（発見）</div><div class="v" id="r-hit">0</div><div class="u" id="r-hit-u">/ 0</div></div>
+        <div class="metric bad"><div class="k">見落とし</div><div class="v" id="r-miss">0</div><div class="u">個</div></div>
+        <div class="metric bad"><div class="k">誤反応</div><div class="v" id="r-err">0</div><div class="u">回</div></div>
+        <div class="metric acc"><div class="k">正確性</div><div class="v" id="r-acc">100</div><div class="u">%</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>くわしい分析</h2>
+      <div class="analysis">
+        <div>
+          <p style="font-weight:600;margin:0 0 8px;font-size:.92rem;">左右別の見落とし<br>
+            <small style="font-weight:400;color:var(--muted)">片側に偏っていないかの目安（半側空間無視のスクリーニング）</small></p>
+          <div class="lr">
+            <div class="half" id="lr-left"><div class="k">左半分</div><div class="v">0</div></div>
+            <div class="half" id="lr-right"><div class="k">右半分</div><div class="v">0</div></div>
+          </div>
+          <p class="hint" id="lr-comment" style="margin-top:8px;"></p>
+        </div>
+        <div>
+          <p style="font-weight:600;margin:0 0 8px;font-size:.92rem;">見落としマップ<br>
+            <small style="font-weight:400;color:var(--muted)">どの位置を見落としたか（走査パターン）</small></p>
+          <div class="mini" id="mini"></div>
+          <div class="legend">
+            <span><b style="background:var(--good)"></b>発見</span>
+            <span><b style="background:var(--bad)"></b>見落とし</span>
+            <span><b style="background:#e3e9f2"></b>その他</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="res-actions">
+      <button class="btn-pri" id="btn-again">▶ もう一度（同じ設定）</button>
+      <button class="btn-sec" id="btn-back">設定にもどる</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+/* ===================== データ ===================== */
+const DIGITS = "0123456789".split("");
+const KANA = ("あいうえお かきくけこ さしすせそ たちつてと なにぬねの はひふへほ まみむめも や ゆ よ らりるれろ わ を ん")
+              .replace(/ /g,"").split(""); // 46文字
+
+const LEVELS = {
+  easy:   {cols:8,  rows:6,  label:"やさしい（8×6＝48マス）"},
+  normal: {cols:10, rows:8,  label:"ふつう（10×8＝80マス）"},
+  hard:   {cols:12, rows:10, label:"むずかしい（12×10＝120マス）"},
+};
+const FONT = {std:"clamp(.8rem,2.4vw,1.3rem)", big:"clamp(1rem,3.2vw,1.9rem)", xl:"clamp(1.2rem,4vw,2.5rem)"};
+/* 盤面をiPad画面に収めるときの「文字サイズ＝セル何割」 */
+const FONT_RATIO = {std:0.40, big:0.50, xl:0.60};
+
+/* 順番モードの盤面サイズ（盤面をぴったり埋める＝余りマスなし。かなは≤46、混在は偶数） */
+const SEQ_LAYOUT = {
+  number: {easy:{cols:5,rows:5}, normal:{cols:7,rows:7}, hard:{cols:10,rows:10}}, // 25 / 49 / 100
+  kana:   {easy:{cols:5,rows:5}, normal:{cols:6,rows:6}, hard:{cols:6,rows:7}},   // 25 / 36 / 42
+  mixed:  {easy:{cols:4,rows:4}, normal:{cols:5,rows:6}, hard:{cols:6,rows:6}},   // 16 / 30 / 36
+};
+const LEVEL_WORD = {easy:"やさしい", normal:"ふつう", hard:"むずかしい"};
+
+/* ===================== 設定状態 ===================== */
+const cfg = {
+  mode:"number",        // number | kana | mixed
+  taskStyle:"cancel",   // cancel（抹消＝さがす） | sequence（順番）
+  level:"easy",
+  seqDir:"asc",         // asc | desc （順番モード）
+  mixedTask:"char",     // char | allDigits | allKana  (mixedのみ)
+  targetMode:"auto",    // auto | manual
+  count:1,              // 1-3 (auto時)
+  selected:[],          // manual時に選んだ文字
+  timeLimit:0,          // 秒
+  font:"big",
+  sound:"on",
+};
+
+/* ===================== 実行時状態 ===================== */
+let game = null;
+let audioCtx = null;
+let currentDims = null;   // 表示中の盤面 {cols,rows}（リサイズ・回転で再フィット）
+
+/* ===================== ユーティリティ ===================== */
+const $ = s => document.querySelector(s);
+const rnd = n => Math.floor(Math.random()*n);
+const pick = a => a[rnd(a.length)];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+function fmtTime(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");}
+function isDigit(c){return c>="0"&&c<="9";}
+
+/* 現在のモードで「特定の文字」を選ぶときの候補プール */
+function charPool(){
+  if(cfg.mode==="number") return DIGITS;
+  if(cfg.mode==="kana")   return KANA;
+  return DIGITS.concat(KANA); // mixed char
+}
+/* 実効的なターゲット種別 */
+function effTargetType(){ return cfg.mode==="mixed" ? cfg.mixedTask : "char"; }
+
+/* ===================== 画面切替 ===================== */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  $("#"+id).classList.add("active");
+  window.scrollTo(0,0);
+}
+
+/* ===================== 音 ===================== */
+function beep(freq,dur,type="sine",vol=0.12){
+  if(cfg.sound!=="on") return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type=type; o.frequency.value=freq; o.connect(g); g.connect(audioCtx.destination);
+    g.gain.setValueAtTime(vol,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+dur);
+    o.start(); o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+const goodSound = ()=>{beep(660,0.10,"sine");setTimeout(()=>beep(990,0.10,"sine"),60);};
+const badSound  = ()=>beep(180,0.18,"square",0.10);
+const doneSound = ()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.16,"triangle",0.13),i*120));};
+
+/* ===================== 設定UIの配線 ===================== */
+function bindSeg(id,key,after){
+  $("#"+id).addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    $("#"+id).querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+    let v=b.dataset.v;
+    if(key==="count"||key==="timeLimit") v=parseInt(v,10);
+    cfg[key]=v;
+    if(after) after();
+  });
+}
+
+function refreshSettingsUI(){
+  const isMixed = cfg.mode==="mixed";
+  const seq = cfg.taskStyle==="sequence";
+  const tt = effTargetType();
+  const charMode = (tt==="char");
+
+  $("#style-hint").textContent = seq
+    ? "盤面の数字／文字を、決まった順番にひとつずつタップしていきます。"
+    : "指定された文字を、盤面からすべて探してタップします。";
+
+  // 抹消（さがす）専用の設定行
+  $("#row-mixedtask").style.display = (!seq && isMixed) ? "" : "none";
+  $("#row-targetmode").style.display = (!seq && charMode) ? "" : "none";
+  $("#row-count").style.display   = (!seq && charMode && cfg.targetMode==="auto") ? "" : "none";
+  $("#row-chips").style.display   = (!seq && charMode && cfg.targetMode==="manual") ? "" : "none";
+
+  // 順番専用：向きの指定（数字・ひらがなのみ。混在は交互で向き固定）
+  const showDir = seq && cfg.mode!=="mixed";
+  $("#row-dir").style.display = showDir ? "" : "none";
+  if(showDir){
+    if(cfg.mode==="number"){ $("#dir-asc").textContent="小さい順"; $("#dir-desc").textContent="大きい順"; }
+    else { $("#dir-asc").textContent="あ→ん"; $("#dir-desc").textContent="ん→あ"; }
+  }
+
+  // レベルの説明
+  if(seq){
+    const lay=SEQ_LAYOUT[cfg.mode][cfg.level], n=lay.cols*lay.rows;
+    const extra = cfg.mode==="mixed" ? "（数字→ひらがな 交互）" : "";
+    $("#level-hint").textContent = `${LEVEL_WORD[cfg.level]}・${lay.cols}×${lay.rows}＝${n}個 ${extra}`;
+  }else{
+    $("#level-hint").textContent = LEVELS[cfg.level].label;
+  }
+
+  if(!seq && charMode && cfg.targetMode==="manual") renderChips();
+}
+
+function renderChips(){
+  const pool = charPool();
+  const box = $("#chips");
+  box.innerHTML="";
+  pool.forEach(ch=>{
+    const b=document.createElement("button");
+    b.className="chip"+(cfg.selected.includes(ch)?" sel":"");
+    b.textContent=ch;
+    b.onclick=()=>{
+      const i=cfg.selected.indexOf(ch);
+      if(i>=0) cfg.selected.splice(i,1);
+      else{ if(cfg.selected.length>=3){ b.animate([{transform:"translateX(-4px)"},{transform:"translateX(4px)"},{transform:"none"}],120); return;} cfg.selected.push(ch); }
+      renderChips();
+    };
+    box.appendChild(b);
+  });
+}
+
+/* ===================== ターゲット決定 ＆ 盤面生成 ===================== */
+function decideTargets(){
+  const tt=effTargetType();
+  if(tt!=="char") return [];                // allDigits / allKana は具体文字なし
+  if(cfg.targetMode==="manual") return cfg.selected.slice();
+  // auto
+  const pool = shuffle(charPool().slice());
+  return pool.slice(0, cfg.count);
+}
+
+function buildBoard(targets){
+  const {cols,rows}=LEVELS[cfg.level];
+  const total=cols*rows;
+  const tt=effTargetType();
+  const cells=new Array(total);
+
+  if(tt==="char"){
+    const tset=new Set(targets);
+    const distractors = charPool().filter(c=>!tset.has(c));
+    const desired = Math.max(targets.length, Math.round(total*0.20));
+    const pos = shuffle([...Array(total).keys()]).slice(0,desired);
+    const posSet=new Set(pos);
+    let ti=0;
+    for(let i=0;i<total;i++){
+      if(posSet.has(i)){
+        const ch = (ti<targets.length) ? targets[ti] : pick(targets);
+        ti++;
+        cells[i]={value:ch,isTarget:true};
+      }else{
+        cells[i]={value:pick(distractors),isTarget:false};
+      }
+    }
+  }else{ // allDigits / allKana
+    const wantDigit = (tt==="allDigits");
+    const desired = Math.round(total*0.40);
+    const pos = new Set(shuffle([...Array(total).keys()]).slice(0,desired));
+    for(let i=0;i<total;i++){
+      const t = pos.has(i);
+      const useDigit = t ? wantDigit : !wantDigit;
+      cells[i]={value: useDigit?pick(DIGITS):pick(KANA), isTarget:t};
+    }
+  }
+  cells.forEach((c,i)=>{c.index=i; c.col=i%cols; c.row=(i/cols)|0; c.status="idle";});
+  return {cells,cols,rows};
+}
+
+/* ===================== ゲーム開始 ===================== */
+function renderBoard(cells,cols){
+  const board=$("#board");
+  board.innerHTML="";
+  const frag=document.createDocumentFragment();
+  cells.forEach(c=>{
+    const d=document.createElement("button");
+    d.className="cell"; d.textContent=c.value; d.dataset.i=c.index;
+    frag.appendChild(d);
+  });
+  board.appendChild(frag);
+  board.onclick=onBoardClick;
+}
+
+/* 盤面を画面（iPad）にぴったり収める：縦横どちらにも収まる正方セルを算出 */
+function fitBoard(cols,rows){
+  currentDims={cols,rows};
+  const board=$("#board"), wrap=board.parentElement, wrapEl=$(".wrap");
+  const gap=parseFloat(getComputedStyle(board).gap)||7;
+  // 残り高さは「ビューポート高 − 盤面エリアの上端 − 下パディング」で計算（盤面の自然高に影響されない）
+  const vh=(window.visualViewport?window.visualViewport.height:window.innerHeight);
+  const wrapTop=wrap.getBoundingClientRect().top;
+  const padB=parseFloat(getComputedStyle(wrapEl).paddingBottom)||24;
+  const availW=wrap.clientWidth;
+  const availH=Math.max(160, vh - wrapTop - padB - 8);
+  wrap.style.minHeight=availH+"px";   // 残り高さを確保して盤面を上下中央に
+  const cellW=(availW-(cols-1)*gap)/cols;
+  const cellH=(availH-(rows-1)*gap)/rows;
+  let cell=Math.floor(Math.min(cellW,cellH));
+  cell=Math.max(24, Math.min(cell,150));   // 小さすぎ／大きすぎを防止
+  board.style.gridTemplateColumns=`repeat(${cols}, ${cell}px)`;
+  board.style.width=(cell*cols + gap*(cols-1))+"px";
+  board.style.fontSize=Math.max(12, Math.floor(cell*FONT_RATIO[cfg.font]))+"px";
+}
+
+/* 順番モードの盤面：連続した値を一意に並べ、ランダム配置。seqIndex＝タップすべき順番 */
+function buildSequence(){
+  const lay=SEQ_LAYOUT[cfg.mode][cfg.level];
+  const cols=lay.cols, rows=lay.rows, n=cols*rows;
+  let items;
+  if(cfg.mode==="number"){
+    items=Array.from({length:n},(_,i)=>String(i+1));
+    if(cfg.seqDir==="desc") items.reverse();
+  }else if(cfg.mode==="kana"){
+    items=KANA.slice(0,n);
+    if(cfg.seqDir==="desc") items.reverse();
+  }else{ // 混在：数字とひらがなを交互（1→あ→2→い…）
+    const half=n/2;
+    const nums=Array.from({length:half},(_,i)=>String(i+1));
+    const ks=KANA.slice(0,half);
+    items=[]; for(let i=0;i<half;i++){ items.push(nums[i]); items.push(ks[i]); }
+  }
+  const order=items.slice();
+  const positions=shuffle([...Array(n).keys()]);
+  const cells=new Array(n);
+  items.forEach((val,idx)=>{ cells[positions[idx]]={value:val, seqIndex:idx, isTarget:true, status:"idle"}; });
+  cells.forEach((c,i)=>{ c.index=i; c.col=i%cols; c.row=(i/cols)|0; });
+  return {cells,cols,rows,order};
+}
+
+function seqInstr(){
+  if(cfg.mode==="number") return cfg.seqDir==="desc" ? "大きい数から …3→2→1 の順にタップ" : "小さい数から 1→2→3… の順にタップ";
+  if(cfg.mode==="kana")   return cfg.seqDir==="desc" ? "ん→…→う→い→あ の順にタップ" : "あ→い→う… 五十音の順にタップ";
+  return "数字とひらがなを 1→あ→2→い… の順にタップ";
+}
+function updateSeqTarget(){ $("#t-target").textContent = game.order[game.found]; }
+
+function startGame(){
+  let cells,cols;
+  const progK=document.querySelector(".stat-chip.prog .k");
+
+  if(cfg.taskStyle==="sequence"){
+    const s=buildSequence(); cells=s.cells; cols=s.cols;
+    game={style:"sequence", mode:cfg.mode, seqDir:cfg.seqDir, order:s.order,
+          cells, cols, rows:s.rows, totalTargets:cells.length,
+          found:0, errors:0, start:performance.now(), timer:null, running:true};
+    $("#t-cap").textContent="つぎにタップ";
+    progK.textContent="すすんだ";
+    updateSeqTarget();
+    $("#t-instr").textContent=seqInstr();
+  }else{
+    const tt=effTargetType();
+    if(tt==="char" && cfg.targetMode==="manual" && cfg.selected.length===0){
+      alert("探す文字を1つ以上えらんでください。"); return;
+    }
+    const targets=decideTargets();
+    const b=buildBoard(targets); cells=b.cells; cols=b.cols;
+    const totalTargets=cells.filter(c=>c.isTarget).length;
+    game={style:"cancel", mode:cfg.mode, tt, targets, cells, cols, rows:b.rows, totalTargets,
+          found:0, errors:0, start:performance.now(), timer:null, running:true};
+    $("#t-cap").textContent="これを探してタップ";
+    progK.textContent="みつけた";
+    let label,instr;
+    if(tt==="char"){ label=targets.join(" 　"); instr="この文字を ぜんぶ さがしてね"; }
+    else if(tt==="allDigits"){ label="数字"; instr="数字だけ さがす（ひらがなは さわらない）"; }
+    else { label="ひらがな"; instr="ひらがなだけ さがす（数字は さわらない）"; }
+    $("#t-target").textContent=label;
+    $("#t-instr").textContent=instr;
+  }
+
+  renderBoard(cells,cols);
+  updateHUD();
+  game.timer=setInterval(tick,200);
+  show("screen-task");
+  fitBoard(cols, game.rows);   // 画面に出してから収める
+}
+
+function tick(){
+  if(!game||!game.running) return;
+  const el=performance.now()-game.start;
+  $("#t-time").textContent=fmtTime(el);
+  if(cfg.timeLimit>0 && el>=cfg.timeLimit*1000) finish("timeup");
+}
+
+function updateHUD(){
+  $("#t-prog").textContent=`${game.found} / ${game.totalTargets}`;
+  $("#t-bar").style.width=(game.totalTargets? (game.found/game.totalTargets*100):0)+"%";
+}
+
+function onBoardClick(e){
+  const el=e.target.closest(".cell"); if(!el||!game.running) return;
+  const i=+el.dataset.i, c=game.cells[i];
+  if(c.status!=="idle") return;
+
+  if(game.style==="sequence"){
+    if(c.seqIndex===game.found){        // 正しい順番
+      c.status="hit"; game.found++; el.classList.add("hit"); goodSound(); updateHUD();
+      if(game.found>=game.totalTargets) finish("complete");
+      else updateSeqTarget();
+    }else{                               // 順番ちがい：あとで必要なのでロックしない
+      game.errors++; el.classList.add("shk"); badSound();
+      setTimeout(()=>el.classList.remove("shk"),260);
+    }
+    return;
+  }
+
+  // 抹消（さがす）
+  if(c.isTarget){
+    c.status="hit"; game.found++; el.classList.add("hit");
+    goodSound(); updateHUD();
+    if(game.found>=game.totalTargets) finish("complete");
+  }else{
+    c.status="wrong"; game.errors++; el.classList.add("wrong","shk");
+    badSound();
+    setTimeout(()=>el.classList.remove("shk"),260);
+  }
+}
+
+/* ===================== 終了処理 ===================== */
+$("#btn-end").onclick=()=>{ if(game&&game.running){ if(confirm("ここで終了して結果を見ますか？")) finish("ended"); } };
+
+function finish(reason){
+  if(!game||!game.running) return;
+  game.running=false;
+  clearInterval(game.timer);
+  game.elapsed = performance.now()-game.start;
+  if(reason==="complete") doneSound();
+  showResult(reason);
+}
+
+/* ===================== 結果画面 ===================== */
+function dirLabel(){
+  if(game.mode==="number") return game.seqDir==="desc"?"大きい順":"小さい順";
+  if(game.mode==="kana")   return game.seqDir==="desc"?"ん→あ":"あ→ん";
+  return "数字→ひらがな（交互）";
+}
+function histModeLabel(){
+  if(game.style==="sequence") return {number:"数字・順番",kana:"ひらがな・順番",mixed:"混在・順番"}[game.mode];
+  return {number:"数字抹消",kana:"ひらがな抹消",mixed:"混在抹消"}[game.mode];
+}
+function targetLabelText(){
+  if(game.style==="sequence") return dirLabel();
+  if(game.tt==="char") return game.targets.join("・");
+  return game.tt==="allDigits" ? "数字すべて" : "ひらがなすべて";
+}
+
+function showResult(reason){
+  const g=game;
+  const seq = g.style==="sequence";
+  const miss = g.totalTargets - g.found;
+  const acc  = (g.found+g.errors)>0 ? Math.round(g.found/(g.found+g.errors)*100) : 100;
+
+  $("#r-setting").textContent = seq
+    ? `${histModeLabel()}　／　${LEVEL_WORD[cfg.level]}　／　${dirLabel()}`
+    : `${histModeLabel()}　／　${LEVEL_WORD[cfg.level]}　／　ターゲット：${targetLabelText()}`;
+  $("#r-hit-k").textContent = seq ? "正答（順番）" : "正答（発見）";
+  $("#r-time").textContent = fmtTime(g.elapsed);
+  $("#r-hit").textContent  = g.found;
+  $("#r-hit-u").textContent= "/ "+g.totalTargets;
+  $("#r-miss").textContent = miss;
+  $("#r-err").textContent  = g.errors;
+  $("#r-acc").textContent  = acc;
+
+  // 評価メッセージ
+  const w = seq ? "進みました" : "を発見しました";
+  let grade,msg;
+  if(reason==="timeup"){ grade="時間になりました ⏱"; msg=`${g.totalTargets}個中 ${g.found}個 ${w}。`; }
+  else if(miss===0 && g.errors===0){ grade="かんぺき！🎉"; msg= seq?"最後まで正しい順番、誤りもゼロ。みごとです。":"見落とし・誤反応ともにゼロ。すばらしい集中力です。"; }
+  else if(miss===0){ grade= seq?"ぜんぶ順番にクリア！👏":"ぜんぶ発見！👏"; msg=`誤反応は ${g.errors}回。最後までよくできました。`; }
+  else if(reason==="ended"){ grade="おつかれさまでした"; msg=`残り ${miss}個を残して終了しました。`; }
+  else { grade="よくできました！"; msg= seq?`誤反応 ${g.errors}回。`:`見落とし ${miss}個・誤反応 ${g.errors}回。`; }
+  $("#r-grade").textContent=grade;
+  $("#r-msg").textContent=msg;
+
+  // 左右別の取りこぼし
+  const midCol=g.cols/2, missWord = seq?"取りこぼし":"見落とし";
+  let L=0,R=0;
+  g.cells.forEach(c=>{ if(c.isTarget && c.status!=="hit"){ if(c.col<midCol) L++; else R++; }});
+  const lEl=$("#lr-left"), rEl=$("#lr-right");
+  lEl.querySelector(".v").textContent=L; rEl.querySelector(".v").textContent=R;
+  lEl.classList.toggle("warn", L>=R*2 && L>=2);
+  rEl.classList.toggle("warn", R>=L*2 && R>=2);
+  let cm="";
+  if(L+R===0) cm= seq?"最後まで到達できました。":"見落としはありません。";
+  else if(L>=R*2 && L>=2) cm=`⚠ 左側の${missWord}が多めです。左への注意・走査を確認しましょう。`;
+  else if(R>=L*2 && R>=2) cm=`⚠ 右側の${missWord}が多めです。右への注意・走査を確認しましょう。`;
+  else cm="左右の偏りは大きくありません。";
+  $("#lr-comment").textContent=cm;
+
+  // 見落としマップ
+  const mini=$("#mini");
+  mini.style.gridTemplateColumns=`repeat(${g.cols},1fr)`;
+  mini.style.maxWidth=Math.min(g.cols*16,260)+"px";
+  mini.innerHTML="";
+  g.cells.forEach(c=>{
+    const i=document.createElement("i");
+    if(c.isTarget) i.className = (c.status==="hit")?"t-hit":"t-miss";
+    mini.appendChild(i);
+  });
+
+  saveHistory({
+    date:new Date().toISOString(), mode:histModeLabel(), level:LEVEL_WORD[cfg.level],
+    target:targetLabelText(), time:fmtTime(g.elapsed), found:g.found, total:g.totalTargets,
+    miss, errors:g.errors, acc
+  });
+
+  show("screen-result");
+}
+
+/* ===================== 履歴（localStorage） ===================== */
+const HKEY="massho_history_v1";
+function loadHistory(){ try{return JSON.parse(localStorage.getItem(HKEY))||[];}catch(e){return [];} }
+function saveHistory(rec){
+  const h=loadHistory(); h.unshift(rec);
+  try{ localStorage.setItem(HKEY, JSON.stringify(h.slice(0,30))); }catch(e){}
+  renderHistory();
+}
+function renderHistory(){
+  const h=loadHistory(), box=$("#hist-body");
+  if(h.length===0){ box.innerHTML='<div class="empty">まだ記録はありません。課題をやると、ここに結果が残ります。</div>'; return; }
+  let html='<table><thead><tr><th>日時</th><th>モード</th><th>レベル</th><th>時間</th><th>発見</th><th>見落とし</th><th>誤反応</th><th>正確性</th></tr></thead><tbody>';
+  h.slice(0,8).forEach(r=>{
+    const d=new Date(r.date);
+    const ds=`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+    html+=`<tr><td>${ds}</td><td>${r.mode}</td><td>${r.level}</td><td>${r.time}</td>
+      <td>${r.found}/${r.total}</td><td>${r.miss}</td><td>${r.errors}</td><td>${r.acc}%</td></tr>`;
+  });
+  html+="</tbody></table>";
+  box.innerHTML=html;
+}
+$("#btn-clearhist").onclick=()=>{ if(confirm("これまでの記録をすべて消しますか？")){ localStorage.removeItem(HKEY); renderHistory(); } };
+
+/* ===================== ボタン配線 ===================== */
+$("#modes").addEventListener("click",e=>{
+  const m=e.target.closest(".mode"); if(!m) return;
+  document.querySelectorAll(".mode").forEach(x=>x.classList.remove("sel"));
+  m.classList.add("sel");
+  cfg.mode=m.dataset.mode;
+  cfg.selected=[];           // モード変更で選択リセット
+  refreshSettingsUI();
+});
+bindSeg("seg-style","taskStyle",refreshSettingsUI);
+bindSeg("seg-level","level",refreshSettingsUI);
+bindSeg("seg-dir","seqDir");
+bindSeg("seg-mixedtask","mixedTask",()=>{cfg.selected=[];refreshSettingsUI();});
+bindSeg("seg-targetmode","targetMode",refreshSettingsUI);
+bindSeg("seg-count","count");
+bindSeg("seg-time","timeLimit");
+bindSeg("seg-font","font");
+bindSeg("seg-sound","sound");
+
+$("#btn-start").onclick=startGame;
+$("#btn-again").onclick=startGame;
+$("#btn-back").onclick=()=>show("screen-start");
+
+/* ===================== iPad：回転・リサイズで盤面を再フィット ===================== */
+function refit(){ if($("#screen-task").classList.contains("active") && currentDims) fitBoard(currentDims.cols,currentDims.rows); }
+window.addEventListener("resize", refit);
+window.addEventListener("orientationchange", ()=>setTimeout(refit,300));
+if(window.visualViewport) window.visualViewport.addEventListener("resize", refit);
+
+/* ホーム画面に追加したときのアイコンを生成（PNG・180px） */
+(function makeIcon(){
+  try{
+    const c=document.createElement("canvas"); c.width=c.height=180;
+    const x=c.getContext("2d");
+    const g=x.createLinearGradient(0,0,180,180); g.addColorStop(0,"#2b6cb0"); g.addColorStop(1,"#3f8ad0");
+    const r=40; x.fillStyle=g; x.beginPath();
+    x.moveTo(r,0); x.arcTo(180,0,180,180,r); x.arcTo(180,180,0,180,r); x.arcTo(0,180,0,0,r); x.arcTo(0,0,180,0,r); x.closePath(); x.fill();
+    x.fillStyle="#fff"; x.textAlign="center"; x.textBaseline="middle";
+    x.font="bold 112px 'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif";
+    x.fillText("抹",90,100);
+    const url=c.toDataURL("image/png");
+    [["apple-touch-icon"],["icon"]].forEach(([rel])=>{ const l=document.createElement("link"); l.rel=rel; l.href=url; document.head.appendChild(l); });
+  }catch(e){}
+})();
+
+/* ===================== 初期化 ===================== */
+refreshSettingsUI();
+renderHistory();
+</script>
+</body>
+</html>
