@@ -207,8 +207,9 @@
   .cell{
     aspect-ratio:1/1; background:var(--cell); border:1.5px solid var(--cell-line); border-radius:10px;
     display:flex; align-items:center; justify-content:center; text-align:center; cursor:pointer;
-    padding:0;  /* マスの中央にきっちり表示 */
+    padding:0; overflow:hidden; min-height:0;  /* 中央表示／文字が大きくてもマスは正方形を保つ */
     -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
+    font-size:inherit; font-family:inherit;   /* ボタン既定の小さい文字を上書き＝盤面のfont-sizeを反映 */
     font-weight:800; line-height:1; transition:transform .06s, background .12s, box-shadow .12s;
     font-variant-numeric:tabular-nums;
   }
@@ -499,8 +500,8 @@ const LEVELS = {
   hard:   {cols:12, rows:10, label:"むずかしい（12×10＝120マス）"},
 };
 const FONT = {std:"clamp(.8rem,2.4vw,1.3rem)", big:"clamp(1rem,3.2vw,1.9rem)", xl:"clamp(1.2rem,4vw,2.5rem)"};
-/* 盤面をiPad画面に収めるときの「文字サイズ＝セル何割」（高齢者配慮で大きめ） */
-const FONT_RATIO = {std:0.64, big:0.78, xl:0.90};
+/* マス内の文字の「埋め具合」倍率（標準/大/特大）。実際の文字サイズは中身に応じて自動で最大化 */
+const FILL = {std:0.86, big:1.0, xl:1.12};
 
 /* 順番モードの盤面サイズ（盤面をぴったり埋める＝余りマスなし。かなは≤46、混在は偶数） */
 const SEQ_LAYOUT = {
@@ -716,7 +717,23 @@ function fitBoard(cols,rows){
   cell=Math.max(44, Math.min(cell,210));   // 高齢者配慮：マスを小さくしすぎない／大画面では大きく
   board.style.gridTemplateColumns=`repeat(${cols}, ${cell}px)`;
   board.style.width=(cell*cols + gap*(cols-1))+"px";
-  board.style.fontSize=Math.max(12, Math.floor(cell*FONT_RATIO[cfg.font]))+"px";
+
+  /* マス内の文字を、はみ出さない範囲で最大化（数字は字形が小さいので大きく、かなは控えめ、複数桁は横幅に合わせる） */
+  let maxAdv=0.62, kana=false;
+  if(game && game.cells){
+    for(const c of game.cells){
+      let adv=0;
+      for(const ch of String(c.value)){ if(isDigit(ch)) adv+=0.62; else { adv+=1.0; kana=true; } }
+      if(adv>maxAdv) maxAdv=adv;
+    }
+  }
+  const digitsOnly = !kana;
+  const sizeMul   = FILL[cfg.font];                 // 標準/大/特大
+  const heightCap = digitsOnly ? 1.12 : 0.96;       // 縦の上限（数字は字形が小さいので大きく、かなは控えめ）
+  const widthCap  = 0.96/maxAdv;                    // 横の上限（最も長い中身＝複数桁の数字が収まる）
+  const hardCap   = digitsOnly ? 1.15 : 0.98;       // 最終上限（はみ出し・行のはみ出し防止）
+  const em = Math.min(sizeMul*heightCap, widthCap, hardCap);
+  board.style.fontSize=Math.max(12, Math.round(cell*em))+"px";
 }
 
 /* 順番モードの盤面：連続した値を一意に並べ、ランダム配置。seqIndex＝タップすべき順番 */
