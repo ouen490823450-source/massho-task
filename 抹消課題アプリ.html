@@ -155,16 +155,17 @@
   @media (orientation:landscape) and (min-width:900px){
     #screen-task.active{
       display:grid;
-      grid-template-columns: clamp(180px, 17vw, 230px) 1fr;
+      grid-template-columns: clamp(146px, 12.5vw, 192px) 1fr;
       grid-template-rows: auto 1fr;
-      column-gap:14px; row-gap:8px;
+      column-gap:12px; row-gap:8px;
     }
     #screen-task .task-top{
       grid-column:1; grid-row:1 / span 2;
       flex-direction:column; align-items:stretch; justify-content:flex-start;
       gap:10px; margin:0;
     }
-    #screen-task .target-box{ min-width:0; flex:0 0 auto; }
+    /* 細いサイドバーでは縦並び（キャプション→大きな文字→説明） */
+    #screen-task .target-box{ min-width:0; flex:0 0 auto; flex-direction:column; align-items:flex-start; gap:4px; }
     #screen-task .stat-chip{ min-width:0; }
     #screen-task #btn-end{ margin-top:auto; }
     #screen-task .progbar{ grid-column:2; grid-row:1; margin:0; }
