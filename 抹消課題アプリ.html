@@ -171,6 +171,36 @@
     #screen-task .progbar{ grid-column:2; grid-row:1; margin:0; }
     #screen-task .board-wrap{ grid-column:2; grid-row:2; }
   }
+  /* 集中モード：ヘッダーを“極薄”の上バー化し、サイドバー分の幅を盤面へ＝盤面最大（縦横どちらでも） */
+  #screen-task.focus.active{ display:flex; flex-direction:column; }
+  #screen-task.focus .task-top{
+    grid-column:auto; grid-row:auto;
+    display:flex; flex-direction:row; align-items:center; flex-wrap:nowrap;
+    gap:7px; margin:0 0 5px; width:100%;
+  }
+  #screen-task.focus .target-box{ flex-direction:row; align-items:center; padding:2px 12px; gap:10px; flex:0 0 auto; min-width:0; }
+  #screen-task.focus .target-box .cap,
+  #screen-task.focus .target-box .instr{ display:none; }
+  #screen-task.focus .target-box .vals{ font-size:1.5rem; }
+  #screen-task.focus .progbar{ display:none; }
+  #screen-task.focus .stat-chip{ padding:3px 11px; min-width:0; }
+  #screen-task.focus .stat-chip .k{ display:none; }
+  #screen-task.focus .stat-chip .v{ font-size:1.1rem; }
+  #screen-task.focus .btn-ghost{ padding:7px 13px; font-size:.92rem; }
+  #screen-task.focus #btn-focus{ margin-left:auto; border-color:var(--primary); color:var(--primary); }
+  /* 集中モード×横向き（メイン）：細いサイドストリップ＋プログレスバー非表示で、盤面を“全高×ほぼ全幅”に最大化 */
+  @media (orientation:landscape) and (min-width:900px){
+    #screen-task.focus.active{ display:grid; grid-template-columns:78px 1fr; grid-template-rows:1fr; column-gap:8px; }
+    #screen-task.focus .task-top{ grid-column:1; grid-row:1; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:8px; margin:0; }
+    #screen-task.focus .target-box{ flex-direction:column; align-items:center; padding:6px 2px; gap:2px; }
+    #screen-task.focus .target-box .vals{ font-size:1.5rem; }
+    #screen-task.focus .stat-chip{ padding:4px 2px; }
+    #screen-task.focus .stat-chip .v{ font-size:.95rem; }
+    #screen-task.focus .btn-ghost{ padding:9px 3px; font-size:.82rem; }
+    #screen-task.focus #btn-focus{ margin:0; }
+    #screen-task.focus #btn-end{ margin-top:auto; }
+    #screen-task.focus .board-wrap{ grid-column:2; grid-row:1; }
+  }
   .board{
     display:grid; gap:7px; margin:0 auto; max-width:100%;
   }
@@ -395,6 +425,7 @@
       </div>
       <div class="stat-chip prog"><div class="k">みつけた</div><div class="v" id="t-prog">0 / 0</div></div><!--prog-k handled in JS-->
       <div class="stat-chip time"><div class="k">時間</div><div class="v" id="t-time">0:00</div></div>
+      <button class="btn-ghost" id="btn-focus" title="サイドバーを隠して盤面を最大化">🔍 集中モード</button>
       <button class="btn-ghost warn" id="btn-end">終了する</button>
     </div>
     <div class="progbar"><i id="t-bar"></i></div>
@@ -498,6 +529,7 @@ const cfg = {
 let game = null;
 let audioCtx = null;
 let currentDims = null;   // 表示中の盤面 {cols,rows}（リサイズ・回転で再フィット）
+let focusMode = false;    // 集中モード（サイドバーを隠して盤面最大化）
 
 /* ===================== ユーティリティ ===================== */
 const $ = s => document.querySelector(s);
@@ -756,7 +788,19 @@ function startGame(){
   updateHUD();
   game.timer=setInterval(tick,200);
   show("screen-task");
+  applyFocus();                // 集中モードの状態を反映
   fitBoard(cols, game.rows);   // 画面に出してから収める
+}
+
+/* 集中モード：サイドバー/ヘッダーを隠して盤面を最大化 */
+function applyFocus(){
+  $("#screen-task").classList.toggle("focus", focusMode);
+  $("#btn-focus").textContent = focusMode ? "✕ 解除" : "🔍 集中モード";
+}
+function toggleFocus(){
+  focusMode = !focusMode;
+  applyFocus();
+  if(currentDims) fitBoard(currentDims.cols, currentDims.rows);
 }
 
 function tick(){
@@ -802,6 +846,7 @@ function onBoardClick(e){
 
 /* ===================== 終了処理 ===================== */
 $("#btn-end").onclick=()=>{ if(game&&game.running){ if(confirm("ここで終了して結果を見ますか？")) finish("ended"); } };
+$("#btn-focus").onclick=toggleFocus;
 
 function finish(reason){
   if(!game||!game.running) return;
