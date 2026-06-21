@@ -229,6 +229,23 @@
   .cell.hit{animation:pop .22s ease;}
   @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-3px);}75%{transform:translateX(3px);}}
   .cell.shk{animation:shake .25s;}
+  /* 誤タップ確認中のマス（どれを確認しているか分かるように） */
+  .cell.pending{ background:var(--accent-bg); color:var(--accent); border-color:var(--accent);
+    box-shadow:inset 0 0 0 3px var(--accent); }
+
+  /* ---------- 誤タップ確認モーダル ---------- */
+  .modal-overlay{ position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center;
+    padding:24px; background:rgba(16,24,38,.5); }
+  .modal-card{ background:#fff; border-radius:18px; padding:24px; width:100%; max-width:460px; text-align:center;
+    box-shadow:0 24px 60px rgba(0,0,0,.35); animation:fade .15s ease; }
+  .modal-msg{ font-size:1.2rem; font-weight:700; line-height:1.6; white-space:pre-line; color:var(--ink); margin-bottom:22px; }
+  .modal-actions{ display:flex; gap:12px; flex-wrap:wrap; }
+  .modal-btn{ flex:1; min-width:150px; padding:16px 12px; border-radius:13px; font-size:1.08rem; font-weight:800;
+    font-family:inherit; cursor:pointer; border:none; transition:.12s; }
+  .modal-btn.ghost{ background:#fff; border:2px solid var(--line2); color:#3f4a63; }
+  .modal-btn.ghost:hover{ border-color:var(--primary); color:var(--primary); }
+  .modal-btn.danger{ background:var(--bad); color:#fff; }
+  .modal-btn.danger:hover{ filter:brightness(1.06); }
 
   /* ---------- results ---------- */
   .res-grade{text-align:center; margin-bottom:18px;}
@@ -398,6 +415,15 @@
           <button data-v="off">OFF</button>
         </div>
       </div>
+
+      <div class="row">
+        <div class="lbl">誤タップ確認</div>
+        <div class="seg" id="seg-misconfirm">
+          <button data-v="off" class="on">OFF</button>
+          <button data-v="on">ON</button>
+        </div>
+        <p class="hint">ONにすると、ターゲット以外をタップしたとき「誤反応として記録しますか？」と確認します（押しまちがい対策）。</p>
+      </div>
     </div>
 
     <button class="start-btn" id="btn-start">▶ はじめる</button>
@@ -487,6 +513,17 @@
 
 </div>
 
+<!-- 誤タップ確認モーダル -->
+<div id="confirm-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-card">
+    <div class="modal-msg" id="confirm-msg"></div>
+    <div class="modal-actions">
+      <button id="confirm-no" class="modal-btn ghost">取り消す（押しまちがい）</button>
+      <button id="confirm-yes" class="modal-btn danger">誤反応として記録</button>
+    </div>
+  </div>
+</div>
+
 <script>
 "use strict";
 /* ===================== データ ===================== */
@@ -523,6 +560,7 @@ const cfg = {
   timeLimit:0,          // 秒
   font:"big",
   sound:"on",
+  misConfirm:"off",     // 誤タップ確認（ターゲット以外をタップ時に確認ダイアログ）
 };
 
 /* ===================== 実行時状態 ===================== */
@@ -849,8 +887,7 @@ function onBoardClick(e){
       if(game.found>=game.totalTargets) finish("complete");
       else updateSeqTarget();
     }else{                               // 順番ちがい：あとで必要なのでロックしない
-      game.errors++; el.classList.add("shk"); badSound();
-      setTimeout(()=>el.classList.remove("shk"),260);
+      wrongTap(el, `「${c.value}」は つぎの順番ではありません。\n誤反応として記録しますか？`, ()=>{ game.errors++; });
     }
     return;
   }
@@ -861,11 +898,34 @@ function onBoardClick(e){
     goodSound(); updateHUD();
     if(game.found>=game.totalTargets) finish("complete");
   }else{
-    c.status="wrong"; game.errors++; el.classList.add("wrong","shk");
-    badSound();
-    setTimeout(()=>el.classList.remove("shk"),260);
+    wrongTap(el, `「${c.value}」は さがす文字ではありません。\n誤反応として記録しますか？`,
+             ()=>{ c.status="wrong"; game.errors++; el.classList.add("wrong"); });
   }
 }
+
+/* 誤タップ：確認ONなら確認ダイアログ、OFFなら即記録 */
+function wrongTap(el, message, recordFn){
+  const doRecord=()=>{ recordFn(); el.classList.add("shk"); badSound(); setTimeout(()=>el.classList.remove("shk"),260); };
+  if(cfg.misConfirm==="on"){
+    el.classList.add("pending");
+    showMisConfirm(message,
+      ()=>{ el.classList.remove("pending"); doRecord(); },   // 記録する
+      ()=>{ el.classList.remove("pending"); });              // 取り消す（押しまちがい）
+  }else{
+    doRecord();
+  }
+}
+
+/* ===================== 誤タップ確認モーダル ===================== */
+let misYes=null, misNo=null;
+function showMisConfirm(message,onYes,onNo){
+  misYes=onYes; misNo=onNo;
+  $("#confirm-msg").textContent=message;
+  $("#confirm-modal").style.display="flex";
+}
+function closeMisConfirm(){ $("#confirm-modal").style.display="none"; misYes=misNo=null; }
+$("#confirm-yes").onclick=()=>{ const f=misYes; closeMisConfirm(); if(f) f(); };
+$("#confirm-no").onclick =()=>{ const f=misNo;  closeMisConfirm(); if(f) f(); };
 
 /* ===================== 終了処理 ===================== */
 $("#btn-end").onclick=()=>{ if(game&&game.running){ if(confirm("ここで終了して結果を見ますか？")) finish("ended"); } };
@@ -875,6 +935,8 @@ function finish(reason){
   if(!game||!game.running) return;
   game.running=false;
   clearInterval(game.timer);
+  closeMisConfirm();   // 確認ダイアログが開いていたら閉じる（未記録の誤タップは破棄）
+  document.querySelectorAll(".cell.pending").forEach(e=>e.classList.remove("pending"));
   game.elapsed = performance.now()-game.start;
   if(reason==="complete") doneSound();
   showResult(reason);
@@ -1000,6 +1062,7 @@ bindSeg("seg-count","count");
 bindSeg("seg-time","timeLimit");
 bindSeg("seg-font","font");
 bindSeg("seg-sound","sound");
+bindSeg("seg-misconfirm","misConfirm");
 
 $("#btn-start").onclick=startGame;
 $("#btn-again").onclick=startGame;
