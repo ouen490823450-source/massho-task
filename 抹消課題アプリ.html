@@ -499,7 +499,6 @@ const LEVELS = {
   normal: {cols:10, rows:8,  label:"ふつう（10×8＝80マス）"},
   hard:   {cols:12, rows:10, label:"むずかしい（12×10＝120マス）"},
 };
-const FONT = {std:"clamp(.8rem,2.4vw,1.3rem)", big:"clamp(1rem,3.2vw,1.9rem)", xl:"clamp(1.2rem,4vw,2.5rem)"};
 /* マス内の文字の「埋め具合」倍率（標準/大/特大）。実際の文字サイズは中身に応じて自動で最大化 */
 const FILL = {std:0.86, big:1.0, xl:1.12};
 
@@ -561,6 +560,7 @@ function beep(freq,dur,type="sine",vol=0.12){
   if(cfg.sound!=="on") return;
   try{
     audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==="suspended") audioCtx.resume();   // iOS：ユーザー操作後に再開
     const o=audioCtx.createOscillator(), g=audioCtx.createGain();
     o.type=type; o.frequency.value=freq; o.connect(g); g.connect(audioCtx.destination);
     g.gain.setValueAtTime(vol,audioCtx.currentTime);
@@ -606,7 +606,10 @@ function refreshSettingsUI(){
   $("#row-dir").style.display = showDir ? "" : "none";
   if(showDir){
     if(cfg.mode==="number"){ $("#dir-asc").textContent="小さい順"; $("#dir-desc").textContent="大きい順"; }
-    else { $("#dir-asc").textContent="あ→ん"; $("#dir-desc").textContent="ん→あ"; }
+    else { // ひらがな：実際に使う最後の文字に合わせる（盤面サイズにより異なる）
+      const lay=SEQ_LAYOUT.kana[cfg.level], last=KANA[lay.cols*lay.rows-1];
+      $("#dir-asc").textContent="あ→"+last; $("#dir-desc").textContent=last+"→あ";
+    }
   }
 
   // レベルの説明
@@ -763,7 +766,10 @@ function buildSequence(){
 
 function seqInstr(){
   if(cfg.mode==="number") return cfg.seqDir==="desc" ? "大きい数から …3→2→1 の順にタップ" : "小さい数から 1→2→3… の順にタップ";
-  if(cfg.mode==="kana")   return cfg.seqDir==="desc" ? "ん→…→う→い→あ の順にタップ" : "あ→い→う… 五十音の順にタップ";
+  if(cfg.mode==="kana"){
+    const last=KANA[SEQ_LAYOUT.kana[cfg.level].cols*SEQ_LAYOUT.kana[cfg.level].rows-1];
+    return cfg.seqDir==="desc" ? `${last}→…→い→あ の逆順にタップ` : "あ→い→う… 五十音の順にタップ";
+  }
   return "数字とひらがなを 1→あ→2→い… の順にタップ";
 }
 function updateSeqTarget(){ $("#t-target").textContent = game.order[game.found]; }
@@ -877,7 +883,7 @@ function finish(reason){
 /* ===================== 結果画面 ===================== */
 function dirLabel(){
   if(game.mode==="number") return game.seqDir==="desc"?"大きい順":"小さい順";
-  if(game.mode==="kana")   return game.seqDir==="desc"?"ん→あ":"あ→ん";
+  if(game.mode==="kana"){ const last=KANA[game.totalTargets-1]; return game.seqDir==="desc"?`${last}→あ`:`あ→${last}`; }
   return "数字→ひらがな（交互）";
 }
 function histModeLabel(){
@@ -918,10 +924,10 @@ function showResult(reason){
   $("#r-grade").textContent=grade;
   $("#r-msg").textContent=msg;
 
-  // 左右別の取りこぼし
-  const midCol=g.cols/2, missWord = seq?"取りこぼし":"見落とし";
+  // 左右別の取りこぼし（奇数列のときは中央列を除外して公平に）
+  const mid=(g.cols-1)/2, missWord = seq?"取りこぼし":"見落とし";
   let L=0,R=0;
-  g.cells.forEach(c=>{ if(c.isTarget && c.status!=="hit"){ if(c.col<midCol) L++; else R++; }});
+  g.cells.forEach(c=>{ if(c.isTarget && c.status!=="hit"){ if(c.col<mid) L++; else if(c.col>mid) R++; }});
   const lEl=$("#lr-left"), rEl=$("#lr-right");
   lEl.querySelector(".v").textContent=L; rEl.querySelector(".v").textContent=R;
   lEl.classList.toggle("warn", L>=R*2 && L>=2);
